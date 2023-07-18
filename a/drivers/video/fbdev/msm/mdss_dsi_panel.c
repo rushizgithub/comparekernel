@@ -25,7 +25,6 @@
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
 #include <linux/panel_notifier.h>
-#include <linux/display_state.h>
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
@@ -42,15 +41,6 @@
 #define DCS_CMD_GET_POWER_MODE 0x0A
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
-
-bool ESD_TE_status = false;
-
-bool display_on = true;
-
-bool is_display_on()
-{
-	return display_on;
-}
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
@@ -807,8 +797,8 @@ static struct dsi_cmd_desc set_col_page_addr_cmd[] = {
 
 /* pack into one frame before sent */
 static struct dsi_cmd_desc set_dual_col_page_addr_cmd[] = {	/*packed*/
-	{{DTYPE_DCS_LWRITE, 0, 0, 0, 0, sizeof(caset_dual)}, caset_dual},
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(paset_dual)}, paset_dual},
+	{{DTYPE_DCS_LWRITE, 0, 0, 0, 1, sizeof(caset_dual)}, caset_dual},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset_dual)}, paset_dual},
 };
 
 
@@ -1398,8 +1388,6 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
-
-	display_on = true;
 
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,

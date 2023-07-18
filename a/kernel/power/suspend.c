@@ -40,10 +40,6 @@
 #include "user_sysfs_private.h"
 #endif
 
-#include <linux/gpio.h>
-extern int slst_gpio_base_id;
-#define PROC_AWAKE_ID 12 /* 12th bit */
-
 const char *pm_labels[] = { "mem", "standby", "freeze", NULL };
 const char *pm_states[PM_SUSPEND_MAX];
 
@@ -406,6 +402,8 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 			log_suspend_abort_reason(suspend_abort);
 			error = -EBUSY;
 		}
+
+		start_logging_wakeup_reasons();
 		syscore_resume();
 	}
 
@@ -584,7 +582,6 @@ int pm_suspend(suspend_state_t state)
 	msm_rpmstats_log_suspend_enter();
 #endif
 	error = enter_state(state);
-	gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 1);
 	if (error) {
 		suspend_stats.fail++;
 		dpm_save_failed_errno(error);
