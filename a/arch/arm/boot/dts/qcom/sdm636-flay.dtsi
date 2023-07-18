@@ -1,0 +1,374 @@
+/* Copyright (c) 2018, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm636-moto-common.dtsi"
+#include "dsi-panel-mot-tianma-ft-618-fhd-vid.dtsi"
+#include "dsi-panel-mot-tianma-nt-619-fhd-vid.dtsi"
+#include "sdm660-internal-codec.dtsi"
+#include "sdm636-flay-audio.dtsi"
+#include "sdm636-egis-fps.dtsi"
+#include "sdm636-camera-sensor-mot-flay.dtsi"
+
+/ {
+	model = "flay";
+	compatible = "qcom,sdm636-flay", "qcom,sdm636-moto", "qcom,sdm636";
+};
+
+&firmware {
+	android {
+		fstab {
+			vendor {
+				fsmgr_flags = "wait,slotselect,verify";
+			};
+		};
+	};
+};
+
+&soc{
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+
+	ssphy: ssphy@c010000 {
+		status = "disabled";
+	};
+
+	usb_nop_phy: usb_nop_phy {
+		compatible = "usb-nop-xceiv";
+	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "flay";
+	};
+
+	qcom,sensor-information {
+		sensor_information25: qcom,sensor-information-25 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information26: qcom,sensor-information-26 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
+	/* delete conflict unused gpio64 source for fps */
+
+	gpio_keys {
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+		/delete-node/ camera_focus;
+		/delete-node/ camera_snapshot;
+	};
+	/delete-node/ apba_ctrl;
+};
+
+&tlmm {
+	/delete-node/ tlmm_gpio_key;
+};
+
+&ets_ldo1p8_en_active {
+	/* LDO_EN */
+	mux {
+		pins = "gpio64";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio64";
+		drive-strength = <16>;
+		bias-pull-up; /* pull up */
+		output-high;
+	};
+};
+
+&ets_ldo1p8_en_suspend{
+	/* LDO_EN */
+	mux {
+		pins = "gpio64";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio64";
+		drive-strength = <16>;
+		bias-pull-up; /* pull up */
+		output-high;
+	};
+};
+&pm660l_l6 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	regulator-boot-on;
+	regulator-always-on;
+};
+&ets_fps {
+	egistec,gpio_ldo1p8_en = <&tlmm 64 0x0>;
+};
+
+&usb3 {
+	dwc3@a800000 {
+		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
+		maximum-speed = "high-speed";
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_ft_618_fhd_vid_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+};
+
+&pm660l_wled {
+	qcom,led-strings-list = [00 01];
+	qcom,en-cabc;
+	/delete-property/ qcom,auto-calibration-enable;
+};
+
+&mdss_dp_ctrl{
+		status = "disabled";
+};
+
+&tlmm {
+	p922x_irq_enable: p922x_irq_enable {
+		mux {
+			pins = "gpio40";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio40";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	wls_otg_dis: wls_otg_dis {
+		mux {
+			pins = "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio61";
+			drive-strength = <2>;
+			output-low;
+			bias-disable;
+		};
+	};
+
+	wls_otg_en: wls_otg_en {
+		mux {
+			pins = "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio61";
+			drive-strength = <2>;
+			output-high;
+			bias-disable;
+		};
+	};
+};
+
+&i2c_6 {
+	status = "okay";
+	p922x_wls_i2c@61 {
+		compatible = "idt,p922x-charger";
+		reg = <0x61>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0x1>;
+		gpios = <&tlmm 40 0x1>; /* IRQ */
+		gpio-names = "idt_p922x_irq";
+		vdd-i2c-supply = <&pm660_l13>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&p922x_irq_enable>;
+
+		/*idt,rx-chip-det;*/
+		idt,tx-auth-enabled;
+		idt,program-fw-enabled;
+		idt,chg-efficiency = <70>;
+		idt,chg-limit-soc = <95>;
+		idt,chg-idle-cl = <50>;
+	};
+};
+
+&pm660_charger {
+        qcom,inner-wls-name = "idt_wireless";
+        qcom,inner-wls-used;
+        qcom,dc-icl-ua = <1100000>;
+        gpios = <&tlmm 61 0x1>; /* OTG EN*/
+        gpio-names = "wls_otg_en";
+        pinctrl-names = "wls_otg_en","wls_otg_dis";
+        pinctrl-0 = <&wls_otg_en>;
+        pinctrl-1 = <&wls_otg_dis>;
+        qcom,mmi-temp-zones = <0 4200 586 0>,
+                                <10 4200 879 586>,
+                                <15 0 1465 1465>,
+                                <45 4200 3000 2000>,
+                                <60 4100 1465  0>;
+
+        io-channels = <&pm660_rradc 8>,
+                      <&pm660_rradc 10>,
+                      <&pm660_rradc 3>,
+                      <&pm660_rradc 4>,
+                      <&pm660_rradc 5>,
+                      <&pm660_rradc 6>;
+        io-channel-names = "charger_temp",
+                           "charger_temp_max",
+                           "usbin_i",
+                           "usbin_v",
+                           "dcin_i",
+                           "dcin_v";
+};
+
+&i2c_3 { /* BLSP1 QUP3 */
+	status = "okay";
+	focaltech_ts@38 {
+		compatible = "focaltech,mmi";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 0x2002>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		focaltech,name = "ft8716";
+		focaltech,family-id = <0x87>;
+		focaltech,reset-gpio = <&tlmm 66 0x00>;
+		focaltech,irq-gpio = <&tlmm 67 0x2008>;
+		focaltech,display-coords = <0 0 1080 2246>;
+		focaltech,panel-coords = <0 0 1080 2246>;
+		focaltech,i2c-pull-up;
+		focaltech,group-id = <1>;
+		focaltech,hard-reset-delay-ms = <20>;
+		focaltech,soft-reset-delay-ms = <200>;
+		focaltech,num-max-touches = <10>;
+		focaltech,fw-delay-aa-ms = <2>;
+		focaltech,fw-delay-55-ms = <2>;
+		focaltech,fw-upgrade-id1 = <0x87>;
+		focaltech,fw-upgrade-id2 = <0xA6>;
+		focaltech,fw-delay-readid-ms = <20>;
+		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,resume-in-workqueue;
+		focaltech,ignore-id-check;
+		config_modifier-names = "fps";
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <300 1870 800 1919 1>;
+			};
+		};
+	};
+	novatech@62{
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
+		interrupt-parent = <&tlmm>;
+		novatek,irq-gpio = <&tlmm 67 0x2001>;
+		novatek,reset-gpio = <&tlmm 66 0x00>;
+	};
+};
+
+&pm660_l16 {
+	qcom,init-voltage = <2800000>;
+	regulator-boot-on;
+	regulator-always-on;
+};
+
+&i2c_2 { /* capsensor */
+	status = "okay";
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		cap_vdd-supply = <&pm660_l16>;
+		cap_svdd-supply = <&pm660_l13>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0x2008>;
+		gpios = <&tlmm 75 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x00>;
+		cap,use_channel_bottom = <0x02>;
+		cap,raw_data_channel = <0x01>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <5>;
+		reg_array_val = <0x15 0xc3 0x17 0x4d 0x18 0x30 0x19 0x40 0x1a 0x15>;
+	};
+
+	/delete-node/ smb1351-charger@1d;
+};
+
+&pm660_gpios {
+	gpio@c200 {
+		status = "disabled";
+	};
+	gpio@ca00 {
+		status = "disabled";
+	};
+};
+
+&pm660_charger {
+	qcom,iterm-ma = <155>;
+	qcom,thermal-mitigation = <3000>,
+				<2500>,
+				<2000>,
+				<1500>,
+				<1200>,
+				<900>,
+				<700>,
+				<600>;
+	qcom,mmi-temp-zones = <0 4200 620 0>,
+				<10 4200 1550 620>,
+				<15 0 1550 1550>,
+				<45 4200 3000 2000>,
+				<60 4200 1550 0>;
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		df-serialnum = "SB18C20873";
+		#include "batterydata-jt40-atl-pm660.dtsi"
+	};
+};
+
+&pm660_haptics { /* Vibrator */
+	qcom,actuator-type = "lra";
+	qcom,vmax-mv = <3000>;
+	qcom,ilim-ma = <800>;
+	qcom,wave-play-rate-us = <4166>;
+};
+

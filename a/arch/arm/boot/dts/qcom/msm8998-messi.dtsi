@@ -1,0 +1,407 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * Assuming there will be NO more Messi boards built with V1 MSM parts
+ * beyond the small amount of early EVT1 boards, all future Messi dts
+ * should directly include this file instead of msm8998-nash-common.dtsi,
+ * though common dt changes could go to msm8998-nash-common.dtsi
+ */
+
+#include "msm8998-v2.dtsi"
+#include "msm8998-moto-common.dtsi"
+#include "msm8998-camera-sensor-mot-messi.dtsi"
+#include "dsi-panel-mot-smd-601-1080p-messie-cmd.dtsi"
+#include "dsi-panel-mot-tianma-601-1080p-messie-cmd.dtsi"
+#include "msm8998-messi-audio.dtsi"
+
+/ {
+	model = "Messi";
+	compatible = "qcom,msm8998-messi", "qcom,msm8998-moto",
+			"qcom,msm8998";
+
+	aliases {
+		/delete-property/ spi1;
+	};
+
+	firmware: firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/soc/1da4000.ufshc/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait,slotselect,verify";
+					status = "ok";
+				};
+			};
+		};
+	};
+
+};
+
+&i2c_7 {
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+	};
+
+	cypress_capsensor@1D {
+		compatible = "cypress,sf3155";
+		label = "MotorolaCapSense";
+		reg = <0x1D>;
+		vdd-supply = <&pm8998_lvs2>;
+		vddio-supply = <&pm8998_lvs2>;
+		avdd-supply = <&pm8998_lvs2>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <63 0>;
+		silicon_id = <0x0BB11477>;
+		block_size = <64>;
+		num_of_blocks = <256>;
+		secure_bytes = <32>;
+		pinctrl-names = "default";
+		gpios = <&pmi8998_gpios 14 0x1>, /* RESET */
+		      <&tlmm 90 0>, /* programming SCLK */
+		      <&tlmm 94 0>, /* programming SDAT */
+		      <&tlmm 63 0>; /* sar int irq */
+		use-raw-gpio-rw = <1>;
+		gpio_base_addr = <0x03000004>;
+		gpio_base_size = <0x00e00000>;
+		gpio_clk_group = <0x00d00000>;
+		gpio_dat_group = <0x00d00000>;
+		cyttsp,sar-status-reg = <0x50>;
+		cyttsp,standby-reg = <0x51>;
+		cyttsp,bootloader-addr = <0x02>;
+		cyttsp,key-num = <4>;
+		cyttsp,key-codes = <4>;
+	};
+
+	/delete-node/ qcom,smb138x@8;
+	/delete-node/ tmp108@48;
+	/delete-node/ tmp108@49;
+	drv2624@5a {
+		status = "ok";
+		compatible = "ti,drv2624";
+		reg = <0x5A>;
+		/* voltage = *_voltage x 22 mV */
+		/* 1.8V for now */
+		ti,rated_voltage = /bits/ 8 <0x49>;
+		ti,overdrive_voltage = /bits/ 8 <0x92>;
+		ti,rate_voltage_clamp = /bits/ 8 <0x97>;
+		ti,rtp_input = /bits/ 8 <0x7f>;
+		ti,rtp_input_reduced = /bits/ 8 <0x51>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 205 Hz for now */
+		ti,lra_freq = /bits/ 8 <0xCD>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x01>;
+		/* sample time 300us  */
+		ti,sample_time = /bits/ 8 <0x1c>;
+		ti,drive_time = /bits/ 8 <0x13>;
+	};
+};
+
+&soc {
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <9>,
+			<58>,
+			<59>,
+			<60>,
+			<61>,
+			<123>;
+	};
+
+	alsa_to_h2w {
+	status = "disabled";
+	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "messi";
+	};
+	/delete-node/ spi@c175000;
+
+	qcom,bcl {
+		qcom,bcl-charger-mitigate-enable;
+	};
+};
+
+&tlmm {
+	/delete-node/ spi_1;  /* delete spi_1 node in tlmm */
+	/delete-node/ kungpow_default;
+
+	/* SPI_I2C_MPHY_SEL, RGB_MOD_SEL*/
+	muc_spi_i2c_switch: muc_spi_i2c_switch@0 {
+		config {
+			pins = "gpio40", "gpio100";
+			bias-disable;
+		};
+	};
+};
+
+&red_led {
+	linux,name = "charging";
+	/delete-property/ linux,default-trigger;
+	qcom,ramp-step-ms = <100>;
+	qcom,start-idx = <0>;
+	qcom,idx-len = <42>;
+	qcom,duty-pcts =
+		[00 05 0a 0f 14 19 1e 23 28 2d 32 37 3c 41 46 4b 50 55 5a 5f 64
+		64 5f 5a 55 50 4b 46 41 3c 37 32 2d 28 23 1e 19 14 0f 0a 05 00];
+	qcom,use-blink;
+};
+
+/delete-node/ &green_led;
+/delete-node/ &blue_led;
+
+&spmi_bus {
+	qcom,pm8998@0 {
+		qcom,power-on@800 {
+			qcom,pon_1 {
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <7>;
+			};
+			qcom,pon_3 {
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <4480>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <1>;
+			};
+		};
+	};
+};
+&mot_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C20118";
+	#include "batterydata-js40-scud-pmi8998.dtsi"
+	#include "batterydata-js40-swd-pmi8998.dtsi"
+};
+
+&pmi8998_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+	qcom,fg-chg-term-current = <100>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,battery-thermal-coefficients = [c0 50 ff];
+	qcom,battery-thermal-high-lut = <550 0>,
+					<600 30>,
+					<650 70>,
+					<700 110>;
+	qcom,battery-thermal-low-lut = <(-90) 0>,
+					<(-120) (-30)>,
+					<(-150) (-60)>,
+					<(-180) (-90)>,
+					<(-210) (-190)>;
+};
+
+&pmi8998_charger {
+	pinctrl-0 = <&eb_vbus_conf>;
+	pinctrl-1 = <&eb_vbus_active>;
+	qcom,dc-icl-ua = <1500000>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
+	qcom,iterm-ma = <58>;
+	qcom,mmi-temp-zones = <0 4200 582 0>,
+				<10 4200 1455 582>,
+				<15 0 1455 1455>,
+				<45 4250 3000 2000>,
+				<60 4200 1455 0>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
+};
+
+&muc {
+		gpios = <&tlmm 36 1>,            /* gpio_muc_det_n, input */
+			<&tlmm 35 0>,            /* gpio_muc_bplus_en, output-low */
+			<&tlmm 26 1>,            /* gpio_muc_int_n, input */
+			<&tlmm 28 2>,            /* gpio_muc_wake_n, output-high */
+			<&tlmm 95 1>,            /* gpio_muc_rdy_n, input */
+			<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
+			<&tlmm 49 0>,            /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 50 1>,            /* gpio_muc_spi_miso, input */
+			<&pmi8998_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
+			<0>,                     /* gpio_muc_bplus_discharg, cs */
+			<&pmi8998_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
+			<&tlmm 52 1>,            /* gpio_muc_clk, input */
+			<&tlmm 40 0>,            /* gpio_muc_spi_i2c_sel, output-low */
+			<&tlmm 100 0>;            /* gpio_muc_rgb_mod_sel, output-low */
+
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+				"gpio_muc_bplus_en",
+				"gpio_muc_int_n",
+				"gpio_muc_wake_n",
+				"gpio_muc_rdy_n",
+				"gpio_muc_ff",
+				"gpio_muc_spi_mosi",
+				"gpio_muc_spi_miso",
+				"gpio_muc_bplus_iset",
+				"gpio_muc_bplus_discharg",
+				"gpio_muc_bplus_fault_n",
+				"gpio_muc_clk",
+				"gpio_muc_spi_i2c_sel",
+				"gpio_muc_rgb_mod_sel";
+
+		pinctrl-0 = <&muc_attach &muc_det &spi_9_sleep &muc_spi_ctrl &muc_spi_i2c_switch>;
+		pinctrl-1 = <&muc_attach &muc_det &spi_9_active &muc_spi_ctrl &muc_spi_i2c_switch>;
+		pinctrl-3 = <&muc_attach &muc_det &i2c_9_active &muc_spi_ctrl &muc_spi_i2c_switch>;
+		mmi,muc-ctrl-en-seq = <1 1 100>, <12 0 100>, <13 0 100>;
+		mmi,muc-ctrl-dis-seq = <1 0 505>, <12 0 100>, <13 0 100>;
+		mmi,muc-ctrl-select-spi-seq = <12 0 10>, <13 0 10>;
+		mmi,muc-ctrl-select-i2c-seq = <12 1 10>, <13 1 10>;
+};
+
+&rpm_bus {
+	rpm-regulator-vsa2 {
+		pm8998_lvs2: regulator-lvs2 {
+			regulator-boot-on;
+		};
+	};
+};
+
+&ssphy {
+	qcom,qmp-phy-init-seq =
+		/* <reg_offset, value, delay> */
+		<0x138 0x30 0x00
+		 0x034 0x04 0x01
+		 0x080 0x14 0x00
+		 0x03c 0x06 0x00
+		 0x08c 0x08 0x00
+		 0x15c 0x06 0x00
+		 0x164 0x01 0x00
+		 0x13c 0x80 0x00
+		 0x0b0 0x82 0x00
+		 0x0b8 0xab 0x00
+		 0x0bc 0xea 0x00
+		 0x0c0 0x02 0x00
+		 0x060 0x06 0x00
+		 0x068 0x16 0x00
+		 0x070 0x36 0x00
+		 0x0dc 0x00 0x00
+		 0x0d8 0x3f 0x00
+		 0x0f8 0x01 0x00
+		 0x0f4 0xc9 0x00
+		 0x148 0x0a 0x00
+		 0x0a0 0x00 0x00
+		 0x09c 0x34 0x00
+		 0x098 0x15 0x00
+		 0x090 0x04 0x00
+		 0x154 0x00 0x00
+		 0x094 0x00 0x00
+		 0x0f0 0x00 0x00
+		 0x00c 0x0a 0x00
+		 0x048 0x07 0x00
+		 0x0d0 0x80 0x00
+		 0x184 0x01 0x00
+		 0x010 0x01 0x00
+		 0x01c 0x31 0x00
+		 0x020 0x01 0x00
+		 0x014 0x00 0x00
+		 0x018 0x00 0x00
+		 0x024 0x85 0x00
+		 0x028 0x07 0x00
+		 0x430 0x0b 0x00
+		 0x4d4 0x0f 0x00
+		 0x4d8 0x4e 0x00
+		 0x4dc 0x18 0x00
+		 0x4f8 0x07 0x00
+		 0x4fc 0x80 0x00
+		 0x504 0x43 0x00
+		 0x50c 0x1c 0x00
+		 0x434 0x75 0x00
+		 0x43c 0x00 0x00
+		 0x440 0x00 0x00
+		 0x444 0x80 0x00
+		 0x408 0x0a 0x00
+		 0x414 0x06 0x00
+		 0x500 0x00 0x00
+		 0x4c0 0x03 0x00
+		 0x564 0x05 0x00
+		 0x830 0x0b 0x00
+		 0x8d4 0x0f 0x00
+		 0x8d8 0x4e 0x00
+		 0x8dc 0x18 0x00
+		 0x8f8 0x07 0x00
+		 0x8fc 0x80 0x00
+		 0x904 0x43 0x00
+		 0x90c 0x1c 0x00
+		 0x834 0x75 0x00
+		 0x83c 0x00 0x00
+		 0x840 0x00 0x00
+		 0x844 0x80 0x00
+		 0x808 0x0a 0x00
+		 0x814 0x06 0x00
+		 0x900 0x00 0x00
+		 0x8c0 0x03 0x00
+		 0x964 0x05 0x00
+		 0x260 0x10 0x00
+		 0x2a4 0x12 0x00
+		 0x28c 0x16 0x00
+		 0x244 0x00 0x00
+		 0x660 0x10 0x00
+		 0x6a4 0x12 0x00
+		 0x68c 0x16 0x00
+		 0x644 0x00 0x00
+		 0xcc8 0x83 0x00
+		 0xccc 0x09 0x00
+		 0xcd0 0xa2 0x00
+		 0xcd4 0x40 0x00
+		 0xcc4 0x02 0x00
+		 0xc80 0xd1 0x00
+		 0xc84 0x1f 0x00
+		 0xc88 0x47 0x00
+		 0xc64 0x1b 0x00
+		 0xc0c 0x9f 0x00
+		 0xc10 0x9f 0x00
+		 0xc14 0xb7 0x00
+		 0xc18 0x4e 0x00
+		 0xc1c 0x65 0x00
+		 0xc20 0x6b 0x00
+		 0xc24 0x15 0x00
+		 0xc28 0x0d 0x00
+		 0xc2c 0x15 0x00
+		 0xc30 0x0d 0x00
+		 0xc34 0x15 0x00
+		 0xc38 0x0d 0x00
+		 0xc3c 0x15 0x00
+		 0xc40 0x0d 0x00
+		 0xc44 0x15 0x00
+		 0xc48 0x0d 0x00
+		 0xc4c 0x15 0x00
+		 0xc50 0x0d 0x00
+		 0xc5c 0x02 0x00
+		 0xca0 0x04 0x00
+		 0xc8c 0x44 0x00
+		 0xc70 0xe7 0x00
+		 0xc74 0x03 0x00
+		 0xc78 0x40 0x00
+		 0xc7c 0x00 0x00
+		 0xdd8 0x8a 0x00
+		 0xcb8 0x75 0x00
+		 0xcb0 0x86 0x00
+		 0xcbc 0x13 0x00
+		 0x61c 0x22 0x00
+		 0xffffffff 0xffffffff 0x00>;
+};
