@@ -1,6 +1,3 @@
-subdir-ccflags-y := \
-    -fdata-sections -ffunction-sections -finline-functions -ftree-vectorize -funroll-loops
-
 #
 # Makefile for the input misc drivers.
 #

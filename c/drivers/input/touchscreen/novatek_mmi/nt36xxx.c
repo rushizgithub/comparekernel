@@ -1383,11 +1383,9 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 		NVT_LOG("int_trigger_type=%d\n", ts->int_trigger_type);
 
 #if WAKEUP_GESTURE
-		ret = request_irq(client->irq, nvt_ts_irq_handler,
-						  ts->int_trigger_type | IRQF_NO_SUSPEND | IRQF_PERF_CRITICAL, client->name, ts);
+		ret = request_irq(client->irq, nvt_ts_irq_handler, ts->int_trigger_type | IRQF_NO_SUSPEND, client->name, ts);
 #else
-		ret = request_irq(client->irq, nvt_ts_irq_handler,
-						  ts->int_trigger_type | IRQF_PERF_CRITICAL, client->name, ts);
+		ret = request_irq(client->irq, nvt_ts_irq_handler, ts->int_trigger_type, client->name, ts);
 #endif
 		if (ret != 0) {
 			NVT_ERR("request irq failed. ret=%d\n", ret);
@@ -1957,7 +1955,6 @@ static struct i2c_driver nvt_i2c_driver = {
 #ifdef CONFIG_OF
 		.of_match_table = nvt_match_table,
 #endif
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 

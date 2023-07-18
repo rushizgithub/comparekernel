@@ -368,12 +368,9 @@ int cpuidle_enable_device(struct cpuidle_device *dev)
 	if (dev->enabled)
 		return 0;
 
-	if (!cpuidle_curr_governor)
-		return -EIO;
-
 	drv = cpuidle_get_cpu_driver(dev);
 
-	if (!drv)
+	if (!drv || !cpuidle_curr_governor)
 		return -EIO;
 
 	if (!dev->registered)
@@ -631,17 +628,16 @@ static void smp_callback(void *v)
 static int cpuidle_latency_notify(struct notifier_block *b,
 		unsigned long l, void *v)
 {
-	static unsigned long prev_latency = ULONG_MAX;
 	struct cpumask cpus;
 
-	if (l < prev_latency) {
+	if (v)
+		cpumask_andnot(&cpus, v, cpu_isolated_mask);
+	else
 		cpumask_andnot(&cpus, cpu_online_mask, cpu_isolated_mask);
-		preempt_disable();
-		smp_call_function_many(&cpus, smp_callback, NULL, false);
-		preempt_enable();
-	}
 
-	prev_latency = l;
+	preempt_disable();
+	smp_call_function_many(&cpus, smp_callback, NULL, 1);
+	preempt_enable();
 
 	return NOTIFY_OK;
 }
